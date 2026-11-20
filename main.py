@@ -1,135 +1,146 @@
 #!/usr/bin/env python3
-"""Entry point for news-image-20261120, round 3.
+"""news-image entrypoint: verify entry.png and stage it into the output dir.
 
-Validates entry.png (a whole, well-formed 1024x1024 PNG under 1 MiB),
-copies it byte-for-byte to $MAKEFUN_OUTPUT_DIR (default /output), then
-re-reads the copy and validates it again. Standard library only.
-
-Usage:  MAKEFUN_OUTPUT_DIR=out python3 main.py
+Reads the image sitting next to this script, runs a strict structural
+check over the PNG bytes, then copies the untouched bytes into
+$MAKEFUN_OUTPUT_DIR (default /output) and re-checks the copy before
+declaring success. Pure standard library.
 """
+
 import os
 import struct
 import sys
 import zlib
-from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-SOURCE = HERE / "entry.png"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAX_BYTES = 1_048_576
-WANT_W, WANT_H = 1024, 1024
-PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+WANT_WIDTH = 1024
+WANT_HEIGHT = 1024
+SOURCE_NAME = "entry.png"
 
 
-class BadEntry(Exception):
-    """Raised when entry.png fails validation."""
+class EntryProblem(Exception):
+    """Raised whenever the image fails any part of the structural check."""
 
 
-def _check_crc(chunk_type, data, stored_crc):
-    want = zlib.crc32(chunk_type + data) & 0xFFFFFFFF
-    if want != stored_crc:
-        raise BadEntry(f"bad CRC in {chunk_type.decode('ascii', 'replace')} "
-                       f"chunk: stored {stored_crc:#x}, computed {want:#x}")
+def fail(msg):
+    raise EntryProblem(msg)
 
 
-def validate(data):
-    """Validate PNG bytes; return (width, height). Raises BadEntry."""
-    if len(data) == 0:
-        raise BadEntry("entry.png is empty")
-    if len(data) > MAX_BYTES:
-        raise BadEntry(f"entry.png is {len(data)} bytes, over the "
-                       f"{MAX_BYTES} byte limit")
-    if data[:8] != PNG_MAGIC:
-        raise BadEntry("bad PNG magic bytes")
-    if len(data) < 8 + 25:
-        raise BadEntry("file too short to contain IHDR + IEND")
+def check_signature(blob):
+    if not blob:
+        fail("input is empty")
+    if blob[: len(PNG_SIGNATURE)] != PNG_SIGNATURE:
+        fail("missing PNG signature")
 
-    pos = 8
-    seen_ihdr = False
-    seen_iend = False
-    width = height = None
-    while pos < len(data):
-        if pos + 8 > len(data):
-            raise BadEntry("truncated chunk header")
-        length, ctype = struct.unpack(">I4s", data[pos:pos + 8])
-        if length > 0x7FFFFFFF:
-            raise BadEntry(f"unreasonable chunk length {length}")
-        end = pos + 8 + length + 4
-        if end > len(data):
-            raise BadEntry(f"truncated {ctype.decode('ascii', 'replace')} "
-                           "chunk")
-        chunk_data = data[pos + 8:pos + 8 + length]
-        stored_crc = struct.unpack(">I", data[pos + 8 + length:end])[0]
-        _check_crc(ctype, chunk_data, stored_crc)
 
-        if ctype == b"IHDR":
-            if pos != 8:
-                raise BadEntry("IHDR is not the first chunk")
-            if seen_ihdr:
-                raise BadEntry("duplicate IHDR chunk")
+def check_size(blob):
+    if len(blob) > MAX_BYTES:
+        fail("input exceeds 1 MiB limit (%d bytes)" % len(blob))
+
+
+def walk_chunks(blob):
+    """Yield (kind, payload) for every chunk; enforce CRCs and framing."""
+    pos = len(PNG_SIGNATURE)
+    first = True
+    saw_header = False
+    saw_end = False
+    while True:
+        if pos == len(blob):
+            if saw_end:
+                break
+            fail("reached end of file without IEND")
+        if saw_end:
+            fail("bytes present after IEND")
+        if pos + 8 > len(blob):
+            fail("truncated chunk header at offset %d" % pos)
+        (length,) = struct.unpack(">I", blob[pos : pos + 4])
+        kind = blob[pos + 4 : pos + 8]
+        body_start = pos + 8
+        body_end = body_start + length
+        if body_end + 4 > len(blob):
+            fail("truncated chunk %r at offset %d" % (kind, pos))
+        payload = blob[body_start:body_end]
+        stored_crc, = struct.unpack(">I", blob[body_end : body_end + 4])
+        actual_crc = zlib.crc32(kind + payload) & 0xFFFFFFFF
+        if stored_crc != actual_crc:
+            fail("CRC mismatch in chunk %r at offset %d" % (kind, pos))
+        if first:
+            if kind != b"IHDR":
+                fail("first chunk is %r, expected IHDR" % kind)
             if length != 13:
-                raise BadEntry("IHDR chunk has wrong length")
-            width, height = struct.unpack(">II", chunk_data[:8])
-            bit_depth, color_type = chunk_data[8], chunk_data[9]
-            if (width, height) != (WANT_W, WANT_H):
-                raise BadEntry(f"image is {width}x{height}, "
-                               f"expected {WANT_W}x{WANT_H}")
-            if bit_depth not in (1, 2, 4, 8, 16):
-                raise BadEntry(f"unsupported bit depth {bit_depth}")
-            if color_type not in (0, 2, 3, 4, 6):
-                raise BadEntry(f"unsupported color type {color_type}")
-            seen_ihdr = True
-        elif ctype == b"IEND":
+                fail("IHDR length is %d, expected 13" % length)
+            w, h = struct.unpack(">II", payload[:8])
+            if w != WANT_WIDTH or h != WANT_HEIGHT:
+                fail("dimensions are %dx%d, expected %dx%d"
+                     % (w, h, WANT_WIDTH, WANT_HEIGHT))
+            first = False
+            saw_header = True
+        elif kind == b"IHDR":
+            fail("duplicate IHDR chunk at offset %d" % pos)
+        if kind == b"IEND":
             if length != 0:
-                raise BadEntry("IEND chunk must be empty")
-            seen_iend = True
-            pos = end
-            break
-        pos = end
+                fail("IEND chunk carries %d bytes, expected none" % length)
+            saw_end = True
+        yield kind, payload
+        pos = body_end + 4
 
-    if not seen_ihdr:
-        raise BadEntry("missing IHDR chunk")
-    if not seen_iend:
-        raise BadEntry("missing IEND trailer")
-    if pos != len(data):
-        raise BadEntry(f"{len(data) - pos} trailing bytes after IEND")
-    return width, height
+
+def inspect(blob):
+    """Run every structural rule over the raw bytes; return (width, height)."""
+    check_size(blob)
+    check_signature(blob)
+    dims = (None, None)
+    found_end = False
+    for kind, payload in walk_chunks(blob):
+        if kind == b"IHDR":
+            dims = struct.unpack(">II", payload[:8])
+        if kind == b"IEND":
+            found_end = True
+    if not found_end:
+        fail("no IEND chunk found")
+    return dims
 
 
 def main():
+    here = os.path.dirname(os.path.abspath(__file__))
+    src_path = os.path.join(here, SOURCE_NAME)
     try:
-        raw = SOURCE.read_bytes()
+        with open(src_path, "rb") as fh:
+            raw = fh.read()
     except OSError as exc:
-        print(f"error: cannot read {SOURCE}: {exc}", file=sys.stderr)
+        print("cannot read %s: %s" % (SOURCE_NAME, exc), file=sys.stderr)
         return 1
     try:
-        width, height = validate(raw)
-    except BadEntry as exc:
-        print(f"error: entry.png failed validation: {exc}", file=sys.stderr)
+        width, height = inspect(raw)
+    except EntryProblem as exc:
+        print("entry rejected: %s" % exc, file=sys.stderr)
         return 1
 
-    out_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
+    dest_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     try:
-        out_dir.mkdir(parents=True, exist_ok=True)
-        dest = out_dir / "entry.png"
-        dest.write_bytes(raw)
-        copied = dest.read_bytes()
+        os.makedirs(dest_dir, exist_ok=True)
+        dest_path = os.path.join(dest_dir, SOURCE_NAME)
+        with open(dest_path, "wb") as fh:
+            fh.write(raw)
+        with open(dest_path, "rb") as fh:
+            staged = fh.read()
     except OSError as exc:
-        print(f"error: cannot write output: {exc}", file=sys.stderr)
+        print("cannot stage output: %s" % exc, file=sys.stderr)
         return 1
-    if copied != raw:
-        print("error: copied file differs from source", file=sys.stderr)
+    if staged != raw:
+        print("staged copy differs from source", file=sys.stderr)
         return 1
     try:
-        validate(copied)
-    except BadEntry as exc:
-        print(f"error: copied file failed validation: {exc}",
-              file=sys.stderr)
+        inspect(staged)
+    except EntryProblem as exc:
+        print("staged copy rejected: %s" % exc, file=sys.stderr)
         return 1
 
-    print(f"ok: entry.png {width}x{height}, {len(raw)} bytes, "
-          f"copied to {dest}")
+    print("ok: %s %dx%d %d bytes -> %s" % (SOURCE_NAME, width, height,
+                                           len(raw), dest_dir))
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
