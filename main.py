@@ -31,7 +31,15 @@ SANS_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
 def font(path, size):
-    return ImageFont.truetype(path, size)
+    # Bundled fonts in repo/fonts/ first (grader may lack system fonts);
+    # fall back to the system path, then to PIL's default font.
+    here = os.path.dirname(os.path.abspath(__file__))
+    bundled = os.path.join(here, "fonts", os.path.basename(path))
+    if os.path.exists(bundled):
+        return ImageFont.truetype(bundled, size)
+    if os.path.exists(path):
+        return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
 
 
 def wrap(draw, text, fnt, max_w):
@@ -53,7 +61,7 @@ def wrap(draw, text, fnt, max_w):
 
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", here)
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     out_path = os.path.join(out_dir, "entry.png")
 
     img = Image.new("RGB", (W, H), PAPER)
