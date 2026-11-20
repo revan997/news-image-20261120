@@ -51,7 +51,8 @@ Every headline was checked against live reporting of 20 November 2026
 
 `draw_poster_r2.py` (build-time only, not part of the entry) draws the
 front page with Pillow: masthead, a three-line lead headline, a fresh
-PIL-drawn illustration (dawn sky, globe, US / China / Russia flags), a
+photographic summit-hall hero (generated in this session — dawn skyline,
+glowing globe, US / China / Russia flags; no text in it), a
 full-width second lead, four stories in a grid, a GTA VI strip and a
 footer. The program itself is `main.py` (Python 3.13, standard library
 only): it verifies `entry.png` is a whole, well-formed 1024×1024 PNG under
