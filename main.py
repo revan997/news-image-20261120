@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""news-image-20261120 ROUND 5 — one-day front page, 1024x1024.
+"""news-image-20261120 ROUND 6 — one-day front page, 1024x1024.
 
 Stdlib + PIL only, no network, deterministic. Writes entry.png
-(1024x1024, <=1 MiB) to $MAKEFUN_OUTPUT_DIR or the repo root.
-Layout: masthead -> lead block (headline + summit kicker) -> big hero
-(generated Riyadh PIF Tower at dusk) -> 2x2 grid -> ALSO TODAY footer.
+(1024x1024, <=1 MiB) ONLY to $MAKEFUN_OUTPUT_DIR (default /output);
+it never writes to the repo dir. Layout: masthead -> lead block
+(headline + summit kicker) -> big hero (generated Kyiv Dnipro bridge
+at dusk) -> 2x2 grid -> ALSO TODAY footer.
 All headlines verified against 20 November 2026 news sources.
 """
 
@@ -110,7 +111,7 @@ def main():
     d.rectangle([MARGIN, 250 + 340 - 38, W - MARGIN, 250 + 340],
                 fill=CAPTION_BAR)
     d.text((MARGIN + 14, 250 + 340 - 30),
-           "Riyadh \u2014 the PIF Tower at dusk",
+           "Kyiv \u2014 a bridge over the Dnipro at dusk",
            font=f_caption, fill=(255, 255, 255))
 
     # ---- 4. Grid 2x2 (~300px) ----
