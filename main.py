@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entry point for news-image-20261120, round 2.
+"""Entry point for news-image-20261120, round 3.
 
 Validates entry.png (a whole, well-formed 1024x1024 PNG under 1 MiB),
 copies it byte-for-byte to $MAKEFUN_OUTPUT_DIR (default /output), then

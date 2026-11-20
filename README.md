@@ -1,13 +1,16 @@
-# The World in One Day — 20 November 2026 (Round 2)
+# The World in One Day — 20 November 2026 (Round 3)
 
 [![make.fun](https://make.fun/badge.svg)](https://make.fun/bounty/news-image-20261120)
 [![competition: news-image-20261120](https://make.fun/badge-competition-news-image-20261120.svg)](https://make.fun/c/news-image-20261120)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 One image that sums up Friday 20 November 2026 — the whole day, not just
-the morning: a newspaper front page. This is round 2 of the entry: it
+the morning: a newspaper front page. This is round 3 of the entry: it
 keeps the verified stories of the morning edition, updates them with what
 actually happened during the day, and adds the day's late-breaking news.
+Round 3 tightens the lead to two lines, leads the page with the Riyadh
+strike photograph (the damaged PIF Tower — evidential, not decorative),
+and cuts the story grid from four small items to three bigger ones.
 
 ## The day
 
@@ -49,12 +52,12 @@ Every headline was checked against live reporting of 20 November 2026
 
 ## How it is built
 
-`draw_poster_r2.py` (build-time only, not part of the entry) draws the
-front page with Pillow: masthead, a three-line lead headline, a fresh
-photographic summit-hall hero (generated in this session — dawn skyline,
-glowing globe, US / China / Russia flags; no text in it), a
-full-width second lead, four stories in a grid, a GTA VI strip and a
-footer. The program itself is `main.py` (Python 3.13, standard library
+`draw_poster_r3.py` (build-time only, not part of the entry) draws the
+front page with Pillow: masthead, a two-line lead headline, a fresh
+photographic strike hero (the Riyadh PIF Tower after the Houthi missile
+hit — twisted glass, shattered windows, smoke, emergency vehicles below;
+no text in it), a full-width second lead, three stories in one row, a
+GTA VI strip and a larger footer. The program itself is `main.py` (Python 3.13, standard library
 only): it verifies `entry.png` is a whole, well-formed 1024×1024 PNG under
 1 MiB — magic, IHDR geometry, per-chunk CRCs, IEND trailer, no trailing
 bytes — then copies it byte-for-byte to `/output/entry.png` and re-reads
