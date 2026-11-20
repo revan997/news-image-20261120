@@ -80,28 +80,28 @@ def main():
     d.line([(MARGIN, 86), (W - MARGIN, 86)], fill=RULE, width=2)
 
     # ---- 2. Lead block ----
-    y = 98
+    y = 94
     d.text((MARGIN, y), "LEAD", font=f_eyebrow, fill=RED)
-    y += 22
+    y += 20
     lead_lines = [
         "Russia hits three Kyiv bridges \u2014",
         "and a missile lands in Poland",
     ]
     for line in lead_lines:
         d.text((MARGIN, y), line, font=f_lead, fill=INK)
-        y += 48
+        y += 46
     kicker = ("Also: Trump, Xi and Putin sign a peace pledge \u2014 "
               "but it says nothing about Ukraine")
-    d.text((MARGIN, y + 6), kicker, font=f_kicker, fill=MUTED)
-    d.line([(MARGIN, 238), (W - MARGIN, 238)], fill=LIGHT_RULE, width=1)
+    d.text((MARGIN, y + 2), kicker, font=f_kicker, fill=MUTED)
+    d.line([(MARGIN, 240), (W - MARGIN, 240)], fill=LIGHT_RULE, width=1)
 
     # ---- 3. Hero (~340px) ----
     hero = Image.open(os.path.join(here, "hero.png")).convert("RGB")
     hero = hero.resize((CW, 340), Image.LANCZOS)
-    img.paste(hero, (MARGIN, 248))
-    d.rectangle([MARGIN, 248 + 340 - 38, W - MARGIN, 248 + 340],
+    img.paste(hero, (MARGIN, 250))
+    d.rectangle([MARGIN, 250 + 340 - 38, W - MARGIN, 250 + 340],
                 fill=CAPTION_BAR)
-    d.text((MARGIN + 14, 248 + 340 - 30),
+    d.text((MARGIN + 14, 250 + 340 - 30),
            "Riyadh \u2014 the PIF Tower at dusk",
            font=f_caption, fill=(255, 255, 255))
 
@@ -127,7 +127,7 @@ def main():
     gutter = 24
     cell_w = (CW - gutter) // 2  # 464
     cell_h = 138
-    grid_y = 604
+    grid_y = 606
     for i, (label, head, body) in enumerate(stories):
         cx = MARGIN + (i % 2) * (cell_w + gutter)
         cy = grid_y + (i // 2) * (cell_h + 24)
